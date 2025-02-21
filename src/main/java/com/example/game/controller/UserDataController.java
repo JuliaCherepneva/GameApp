@@ -4,6 +4,7 @@ import com.example.game.service.UserDataService;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -15,23 +16,25 @@ public class UserDataController {
 
     // Эндпоинт для приема данных синхронизации
     @PostMapping("/sync")
-    public String syncUserData(@RequestParam String uuid, @RequestBody String jsonData) {
+    public ResponseEntity<String> syncUserData(@RequestParam String uuid, @RequestBody String jsonData) {
         log.info("Syncing user data for uuid: {}", uuid);
-        return userDataService.processSyncData(uuid, jsonData);
+        String syncData = userDataService.processSyncData(uuid, jsonData);
+        return ResponseEntity.ok(syncData);
     }
 
     // Эндпоинт для отправки данных пользователю
     @GetMapping("/user-data")
-    public String getUserData(@RequestParam String uuid) {
+    public ResponseEntity<String> getUserData(@RequestParam String uuid) {
         log.info("Fetching user data for uuid: {}", uuid);
-        return userDataService.getUserData(uuid);
+        String userData = userDataService.getUserData(uuid);
+        return ResponseEntity.ok(userData);
     }
 
     // Эндпоинт для приема игровой статистики
     @PostMapping("/activity")
-    public String processActivity(@RequestParam String uuid, @RequestParam int activity) {
+    public ResponseEntity<String> processActivity(@RequestParam String uuid, @RequestParam int activity) {
         log.info("Processing activity for uuid: {}, activity: {}", uuid, activity);
-        return userDataService.processActivityData(uuid, activity);
+        String activityData = userDataService.processActivityData(uuid, activity);
+        return ResponseEntity.ok(activityData);
     }
-
 }
