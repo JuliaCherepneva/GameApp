@@ -20,6 +20,13 @@ import org.springframework.stereotype.Service;
 
 import java.time.Instant;
 
+import static com.example.game.exception.ActivityLimitExceededException.LIMIT_ACTIVITY;
+import static com.example.game.exception.InvalidJsonException.INVALID_JSON_FORMAT;
+import static com.example.game.exception.InvalidJsonException.JSON_PROCESSING_ERROR;
+import static com.example.game.exception.SyncLimitExceededException.MESSAGE_RQ;
+import static com.example.game.exception.SyncLimitExceededException.MESSAGE_SYNC;
+import static com.example.game.exception.UserNotFoundException.USER_NOT_FOUND;
+
 @Service
 public class UserDataService {
     private static final Logger log = LoggerFactory.getLogger(UserDataService.class);
@@ -40,14 +47,14 @@ public class UserDataService {
 
         // Получаем данные пользователя по UUID
         UserData userData = userDataRepository.findById(uuid)
-                .orElseThrow(() -> new UserNotFoundException("User not found. Please register first."));
+                .orElseThrow(() -> new UserNotFoundException(USER_NOT_FOUND));
 
         // Проверяем и сбрасываем счетчик синхронизаций, если прошло больше 24 часов
         checkAndResetCounters(userData, false, currentTime);
 
         // Проверяем, не превышен ли лимит запросов (100 раз в день)
         if (userData.getSyncCount() >= 100) {
-            throw new SyncLimitExceededException("Sync limit exceeded for today.");
+            throw new SyncLimitExceededException(MESSAGE_SYNC);
         }
         //Если лимит не превышен, выполняем далее Безопасный парсинг JSON
         try {
@@ -66,7 +73,7 @@ public class UserDataService {
             return "Data received successfully.";
         } catch (JsonProcessingException e) {
             log.error("Error parsing JSON for user: {}", uuid, e);
-            throw new InvalidJsonException("Invalid JSON format.");
+            throw new InvalidJsonException(INVALID_JSON_FORMAT);
         }
 
     }
@@ -78,14 +85,14 @@ public class UserDataService {
 
         // Получаем данные пользователя по UUID
         UserData userData = userDataRepository.findById(uuid)
-                .orElseThrow(() -> new UserNotFoundException("User not found. Please register first."));
+                .orElseThrow(() -> new UserNotFoundException(USER_NOT_FOUND));
 
         // Проверяем и сбрасываем счетчик синхронизаций, если прошло больше 24 часов
         checkAndResetCounters(userData, false, currentTime);
 
         // Проверяем, не превышен ли лимит запросов (1 раз в день)
         if (userData.getSyncCount() >= 1) {
-            throw new SyncLimitExceededException("You have already received your data today.");
+            throw new SyncLimitExceededException(MESSAGE_RQ);
         }
 
         userData.setSyncCount(userData.getSyncCount() + 1); // Увеличиваем счетчик синхронизаций
@@ -96,7 +103,7 @@ public class UserDataService {
             return objectMapper.writeValueAsString(userData); // Сериализуем объект UserData в строку JSON и возвращаем результат
         } catch (JsonProcessingException e) {
             log.error("Error serializing user data for UUID: {}", uuid, e);
-            throw new InvalidJsonException("Error processing JSON");
+            throw new InvalidJsonException(JSON_PROCESSING_ERROR);
         }
     }
 
@@ -108,14 +115,14 @@ public class UserDataService {
 
         // Получаем данные пользователя по UUID
         UserData userData = userDataRepository.findById(uuid)
-                .orElseThrow(() -> new UserNotFoundException("User not found. Please register first."));
+                .orElseThrow(() -> new UserNotFoundException(USER_NOT_FOUND));
 
         // Проверяем и сбрасываем счетчик статистики, если прошло больше 24 часов
         checkAndResetCounters(userData, true, currentTime);
 
         // Проверяем, не превышен ли лимит запросов (10000 раз в день)
         if (userData.getStatCount() >= 10000) {
-            throw new ActivityLimitExceededException("Activity limit exceeded for today.");
+            throw new ActivityLimitExceededException(LIMIT_ACTIVITY);
         }
         // Обновляем статистику
         userData.setActivity(userData.getActivity() + activity);
