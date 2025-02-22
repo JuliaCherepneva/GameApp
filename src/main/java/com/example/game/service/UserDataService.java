@@ -14,11 +14,14 @@ import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cache.annotation.CachePut;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 
+import java.time.Clock;
 import java.time.Instant;
+import java.time.LocalDateTime;
 
 import static com.example.game.exception.ActivityLimitExceededException.LIMIT_ACTIVITY;
 import static com.example.game.exception.InvalidJsonException.INVALID_JSON_FORMAT;
@@ -32,10 +35,13 @@ public class UserDataService {
     private static final Logger log = LoggerFactory.getLogger(UserDataService.class);
     private final UserDataRepository userDataRepository;
     private final ObjectMapper objectMapper;
+    private final Clock clock;
 
-    public UserDataService(UserDataRepository userDataRepository) {
+    @Autowired
+    public UserDataService(UserDataRepository userDataRepository, Clock clock, ObjectMapper objectMapper) {
         this.userDataRepository = userDataRepository;
-        this.objectMapper = new ObjectMapper();
+        this.clock = clock;
+        this.objectMapper = objectMapper != null ? objectMapper : new ObjectMapper();
         this.objectMapper.registerModule(new JavaTimeModule());
         this.objectMapper.disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
     }
@@ -49,13 +55,14 @@ public class UserDataService {
         UserData userData = userDataRepository.findById(uuid)
                 .orElseThrow(() -> new UserNotFoundException(USER_NOT_FOUND));
 
-        // Проверяем и сбрасываем счетчик синхронизаций, если прошло больше 24 часов
-        checkAndResetCounters(userData, false, currentTime);
-
         // Проверяем, не превышен ли лимит запросов (100 раз в день)
         if (userData.getSyncCount() >= 100) {
             throw new SyncLimitExceededException(MESSAGE_SYNC);
         }
+
+        // Проверяем и сбрасываем счетчик синхронизаций, если прошло больше 24 часов
+        checkAndResetCounters(userData, false, currentTime);
+
         //Если лимит не превышен, выполняем далее Безопасный парсинг JSON
         try {
             JsonNode rootNode = objectMapper.readTree(jsonData);
@@ -80,7 +87,7 @@ public class UserDataService {
 
     @Cacheable(value = "users", key = "#uuid")
     public String getUserData(String uuid) {
-        long currentTime = Instant.now().toEpochMilli(); // Вычисляем время для текущего запроса
+        long currentTime = Instant.now(clock).toEpochMilli(); // Вычисляем время для текущего запроса
         log.info("Fetching user data for UUID: {}", uuid);
 
         // Получаем данные пользователя по UUID
@@ -96,11 +103,14 @@ public class UserDataService {
         }
 
         userData.setSyncCount(userData.getSyncCount() + 1); // Увеличиваем счетчик синхронизаций
-        userData.setLastSyncTime(currentTime); // Обновляем время последней синхронизации
+        userData.setLastSyncTime(currentTime);
         userDataRepository.save(userData); // Сохраняем обновленные данные в базе
 
         try {
-            return objectMapper.writeValueAsString(userData); // Сериализуем объект UserData в строку JSON и возвращаем результат
+            String jsonResult = objectMapper.writeValueAsString(userData); // Сериализуем объект UserData в строку JSON и возвращаем результат
+            log.info("Serialized userData: {}", jsonResult);
+            return jsonResult;
+
         } catch (JsonProcessingException e) {
             log.error("Error serializing user data for UUID: {}", uuid, e);
             throw new InvalidJsonException(JSON_PROCESSING_ERROR);
@@ -117,13 +127,14 @@ public class UserDataService {
         UserData userData = userDataRepository.findById(uuid)
                 .orElseThrow(() -> new UserNotFoundException(USER_NOT_FOUND));
 
-        // Проверяем и сбрасываем счетчик статистики, если прошло больше 24 часов
-        checkAndResetCounters(userData, true, currentTime);
-
         // Проверяем, не превышен ли лимит запросов (10000 раз в день)
         if (userData.getStatCount() >= 10000) {
             throw new ActivityLimitExceededException(LIMIT_ACTIVITY);
         }
+
+        // Проверяем и сбрасываем счетчик статистики, если прошло больше 24 часов
+        checkAndResetCounters(userData, true, currentTime);
+
         // Обновляем статистику
         userData.setActivity(userData.getActivity() + activity);
         userData.setStatCount(userData.getStatCount() + 1);

@@ -26,3 +26,7 @@ CREATE INDEX idx_country_money ON user_data (country, money DESC);
 CREATE INDEX idx_country ON user_data (country);
 CREATE INDEX idx_created_at ON user_data (created_at);
 CREATE INDEX idx_user_activity ON user_activity_history (uuid, activity_date DESC);
+
+-- changeset julia:3
+ALTER TABLE user_data
+ALTER COLUMN created_at DROP DEFAULT;
