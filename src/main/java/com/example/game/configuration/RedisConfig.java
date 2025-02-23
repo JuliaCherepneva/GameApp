@@ -22,7 +22,7 @@ public class RedisConfig {
     /**
      * Фабрика подключений к Redis с использованием Lettuce.
      *
-     * @return объект RedisConnectionFactory
+     * @return объект {@link RedisConnectionFactory}
      */
     @Bean
     public RedisConnectionFactory redisConnectionFactory() {
@@ -34,7 +34,7 @@ public class RedisConfig {
      * Определяет TTL записей, запрещает кеширование null-значений и настраивает сериализацию.
      *
      * @param objectMapper для сериализации данных в JSON
-     * @return объект RedisCacheConfiguration
+     * @return объект {@link RedisCacheConfiguration}
      */
     @Bean
     public RedisCacheConfiguration cacheConfiguration(ObjectMapper objectMapper) {
