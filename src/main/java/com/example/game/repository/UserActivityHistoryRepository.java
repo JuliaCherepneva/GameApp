@@ -1,6 +1,7 @@
 package com.example.game.repository;
 
 import com.example.game.model.UserActivityHistory;
+import com.example.game.model.UserData;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -22,11 +23,11 @@ public interface UserActivityHistoryRepository extends JpaRepository<UserActivit
      * Используется для анализа активности пользователя.
      *</p>
      *
-     * @param uuid      Уникальный идентификатор пользователя.
+     * @param user     Уникальный идентификатор пользователя.
      * @param startDate Начальная дата (включительно), с которой учитывать активность.
      * @param pageable  Объект для пагинации и ограничения количества записей.
      * @return Список записей активности пользователя, отсортированный по дате убывания.
      */
-    @Query("SELECT uah FROM UserActivityHistory uah WHERE uah.uuid = :uuid AND uah.activityDate >= :startDate ORDER BY uah.activityDate DESC")
-    List<UserActivityHistory> findUserActivityHistoryByUuidAndPeriod(@Param("uuid") String uuid, @Param("startDate") LocalDate startDate, Pageable pageable);
+    @Query("SELECT uah FROM UserActivityHistory uah WHERE uah.user = :user AND uah.activityDate >= :startDate ORDER BY uah.activityDate DESC")
+    List<UserActivityHistory> findUserActivityHistoryByUuidAndPeriod(@Param("user") UserData user, @Param("startDate") LocalDate startDate, Pageable pageable);
 }

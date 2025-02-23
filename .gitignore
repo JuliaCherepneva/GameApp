@@ -1,7 +1,7 @@
 HELP.md
-deployment/.env
-deployment/docker-compose.yml
-deployment/Dockerfile
+game_project/deployment/.env
+game_project/deployment/docker-compose.yml
+game_project/deployment/Dockerfile
 application.properties
 
 target/

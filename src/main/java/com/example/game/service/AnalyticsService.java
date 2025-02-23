@@ -110,7 +110,7 @@ public class AnalyticsService {
     /**
      * Получение списка истории активности пользователя, отсортированного по дате.
      *
-     * @param uuid        UUID пользователя, чью активность нужно получить.
+     * @param user        UUID пользователя, чью активность нужно получить.
      * @param startDate   Дата начала периода для получения истории активности.
      * @return Список объектов {@link UserActivityHistory}, представляющих активность пользователя за указанный период.
      * @throws IllegalArgumentException Если параметры "uuid" или "startDate" пустые или равны null.
@@ -118,25 +118,25 @@ public class AnalyticsService {
      * @throws DatabaseException Если произошла ошибка при запросе данных из базы данных.
      */
     @Cacheable(value = "userActivityHistory", key = "#uuid + '_' + #startDate")
-    public List<UserActivityHistory> getUserActivityHistory(String uuid, LocalDate startDate) {
-        if (uuid == null || uuid.isBlank()) {
-            throw new IllegalArgumentException("User UUID must not be null or empty.");
+    public List<UserActivityHistory> getUserActivityHistory(UserData user, LocalDate startDate) {
+        if (user == null) {
+            throw new IllegalArgumentException("User UUID must not be null.");
         }
         if (startDate == null) {
             throw new IllegalArgumentException("Start date must not be null.");
         }
 
-        log.info("Fetching activity history for user: {} from date: {}", uuid, startDate);
+        log.info("Fetching activity history for user: {} from date: {}", user, startDate);
         Pageable pageable = PageRequest.of(0, 10000);
 
         try {
-            List<UserActivityHistory> history = userActivityHistoryRepository.findUserActivityHistoryByUuidAndPeriod(uuid, startDate, pageable);
+            List<UserActivityHistory> history = userActivityHistoryRepository.findUserActivityHistoryByUuidAndPeriod(user, startDate, pageable);
             if (history.isEmpty()) {
-                throw new NoDataFoundException(ERROR_NO_ACTIVITY_FOR_USER + uuid);
+                throw new NoDataFoundException(ERROR_NO_ACTIVITY_FOR_USER + user);
             }
             return history;
         } catch (Exception e) {
-            log.error("Error fetching activity history for user: {}", uuid, e);
+            log.error("Error fetching activity history for user: {}", user, e);
             throw new DatabaseException(ERROR_ACTIVITY_HISTORY);
         }
     }

@@ -2,11 +2,13 @@ package com.example.game.controller;
 
 import com.example.game.model.UserActivityHistory;
 import com.example.game.model.UserData;
+import com.example.game.repository.UserDataRepository;
 import com.example.game.service.AnalyticsService;
 import io.swagger.v3.oas.annotations.Operation;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -28,6 +30,7 @@ import java.util.List;
 @RequiredArgsConstructor
 public class AnalyticsController {
 
+    private final UserDataRepository userDataRepository;
     private final AnalyticsService analyticsService;
     private final Logger log = LoggerFactory.getLogger(AnalyticsController.class);
 
@@ -78,7 +81,12 @@ public class AnalyticsController {
     @GetMapping("/user-activity-history")
     public ResponseEntity<List<UserActivityHistory>> getUserActivityHistory(@RequestParam String uuid, @RequestParam LocalDate startDate) {
         log.info("Fetching activity history for user: {} from date: {}", uuid, startDate);
-        List<UserActivityHistory> activityHistory = analyticsService.getUserActivityHistory(uuid, startDate);
+        UserData userData = userDataRepository.findByUuid(uuid);
+        if (userData == null) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(null);
+        }
+
+        List<UserActivityHistory> activityHistory = analyticsService.getUserActivityHistory(userData, startDate);
         return ResponseEntity.ok(activityHistory);
     }
 }

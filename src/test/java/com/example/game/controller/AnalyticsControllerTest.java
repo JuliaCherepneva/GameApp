@@ -2,6 +2,7 @@ package com.example.game.controller;
 
 import com.example.game.model.UserActivityHistory;
 import com.example.game.model.UserData;
+import com.example.game.repository.UserDataRepository;
 import com.example.game.service.AnalyticsService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -23,12 +24,12 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 
-
 @ExtendWith(MockitoExtension.class)
 class AnalyticsControllerTest {
     @Autowired
     private MockMvc mockMvc;
-
+    @Mock
+    private UserDataRepository userDataRepository;
     @Mock
     private AnalyticsService analyticsService;
 
@@ -76,7 +77,7 @@ class AnalyticsControllerTest {
                 .andExpect(MockMvcResultMatchers.status().isOk())
                 .andExpect(MockMvcResultMatchers.jsonPath("$").value(10));
 
-        verify(analyticsService).countNewUsersByCountry("US", LocalDate.of(2025, 2, 22)); // Проверяем, что метод был вызван
+        verify(analyticsService).countNewUsersByCountry("US", LocalDate.of(2025, 2, 22));
     }
 
     @Test
@@ -87,22 +88,22 @@ class AnalyticsControllerTest {
         UserActivityHistory activityHistory = new UserActivityHistory();
 
         activityHistory.setUser(userData);
-        activityHistory.setActivity(1); // Пример значения активности
-        activityHistory.setActivityDate(LocalDate.of(2025, 2, 22)); // Устанавливаем нужную дату
+        activityHistory.setActivity(1);
+        activityHistory.setActivityDate(LocalDate.of(2025, 2, 22));
 
         List<UserActivityHistory> activityHistoryList = List.of(activityHistory);
-
-        when(analyticsService.getUserActivityHistory("test-uuid", LocalDate.of(2025, 2, 22))).thenReturn(activityHistoryList);
+        when(userDataRepository.findByUuid("test-uuid")).thenReturn(userData);
+        when(analyticsService.getUserActivityHistory(userData, LocalDate.of(2025, 2, 22))).thenReturn(activityHistoryList);
 
         mockMvc.perform(MockMvcRequestBuilders.get("/api/analytics/user-activity-history")
                         .param("uuid", "test-uuid")
-                        .param("startDate", "2025-02-22") // Используем строку даты вместо LocalDate.now().toString()
+                        .param("startDate", "2025-02-22")
                         .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(MockMvcResultMatchers.status().isOk())
                 .andExpect(MockMvcResultMatchers.jsonPath("$[0].user.uuid").value("test-uuid"))
                 .andExpect(MockMvcResultMatchers.jsonPath("$[0].activity").value(1))
-                .andExpect(MockMvcResultMatchers.jsonPath("$[0].activityDate").value("2025-02-22")); // Сравниваем как строку
+                .andExpect(MockMvcResultMatchers.jsonPath("$[0].activityDate").value("2025-02-22"));
 
-        verify(analyticsService).getUserActivityHistory("test-uuid", LocalDate.of(2025, 2, 22)); // Проверяем, что метод был вызван
+        verify(analyticsService).getUserActivityHistory(userData, LocalDate.of(2025, 2, 22));
     }
 }

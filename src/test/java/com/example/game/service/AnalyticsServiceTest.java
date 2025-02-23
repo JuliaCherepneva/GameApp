@@ -1,5 +1,6 @@
 package com.example.game.service;
 
+import com.example.game.exception.DatabaseException;
 import com.example.game.model.UserActivityHistory;
 import com.example.game.model.UserData;
 import com.example.game.repository.AnalyticsRepository;
@@ -84,23 +85,33 @@ class AnalyticsServiceTest {
 
     @Test
     void getUserActivityHistory_ShouldReturnHistory() {
-        String uuid = "user-123";
+        UserData userData = new UserData();
+        userData.setUuid("test-uuid");
         LocalDate startDate = LocalDate.of(2024, 2, 1);
         List<UserActivityHistory> mockHistory = List.of(new UserActivityHistory(), new UserActivityHistory());
 
-        when(userActivityHistoryRepository.findUserActivityHistoryByUuidAndPeriod(eq(uuid), eq(startDate), any(Pageable.class)))
+        when(userActivityHistoryRepository.findUserActivityHistoryByUuidAndPeriod(eq(userData), eq(startDate), any(Pageable.class)))
                 .thenReturn(mockHistory);
 
-        List<UserActivityHistory> result = analyticsService.getUserActivityHistory(uuid, startDate);
+        List<UserActivityHistory> result = analyticsService.getUserActivityHistory(userData, startDate);
 
         assertThat(result).hasSize(mockHistory.size());
-        verify(userActivityHistoryRepository).findUserActivityHistoryByUuidAndPeriod(eq(uuid), eq(startDate), any(Pageable.class));
+        verify(userActivityHistoryRepository).findUserActivityHistoryByUuidAndPeriod(eq(userData), eq(startDate), any(Pageable.class));
     }
 
+
     @Test
-    void getUserActivityHistory_ShouldThrowException_WhenUuidIsEmpty() {
-        assertThatThrownBy(() -> analyticsService.getUserActivityHistory("", LocalDate.now()))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessage("User UUID must not be null or empty.");
+    void getUserActivityHistory_ShouldThrowException_WhenDatabaseErrorOccurs() {
+        UserData userData = new UserData();
+        userData.setUuid("valid-uuid");
+
+        // Мокаем репозиторий, чтобы он вызвал исключение при обращении
+        when(userActivityHistoryRepository.findUserActivityHistoryByUuidAndPeriod(eq(userData), any(LocalDate.class), any(Pageable.class)))
+                .thenThrow(new RuntimeException("Database error"));
+
+        // Проверяем, что выбрасывается DatabaseException, а не IllegalArgumentException
+        assertThatThrownBy(() -> analyticsService.getUserActivityHistory(userData, LocalDate.now()))
+                .isInstanceOf(DatabaseException.class)
+                .hasMessage("Failed to fetch activity history. Please try again later");
     }
 }
