@@ -21,7 +21,6 @@ import org.springframework.stereotype.Service;
 
 import java.time.Clock;
 import java.time.Instant;
-import java.time.LocalDateTime;
 
 import static com.example.game.exception.ActivityLimitExceededException.LIMIT_ACTIVITY;
 import static com.example.game.exception.InvalidJsonException.INVALID_JSON_FORMAT;
@@ -30,12 +29,21 @@ import static com.example.game.exception.SyncLimitExceededException.MESSAGE_RQ;
 import static com.example.game.exception.SyncLimitExceededException.MESSAGE_SYNC;
 import static com.example.game.exception.UserNotFoundException.USER_NOT_FOUND;
 
+/**
+ * Сервис для обработки и синхронизации данных пользователей.
+ *  <p>
+ *  Этот класс предоставляет методы для обработки синхронизации данных, получение данных пользователя
+ *  и обработку игровой активности.
+ *  </p>
+ */
 @Service
 public class UserDataService {
-    private static final Logger log = LoggerFactory.getLogger(UserDataService.class);
+
     private final UserDataRepository userDataRepository;
     private final ObjectMapper objectMapper;
     private final Clock clock;
+
+    private static final Logger log = LoggerFactory.getLogger(UserDataService.class);
 
     @Autowired
     public UserDataService(UserDataRepository userDataRepository, Clock clock, ObjectMapper objectMapper) {
@@ -46,30 +54,36 @@ public class UserDataService {
         this.objectMapper.disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
     }
 
+    /**
+     * Обработка и синхронизация данных пользователя.
+     *
+     * @param uuid      UUID пользователя для синхронизации.
+     * @param jsonData  Данные для синхронизации в формате JSON.
+     * @return Сообщение об успешной синхронизации данных.
+     * @throws IllegalArgumentException Если параметры "uuid" или "jsonData" пустые или некорректные.
+     * @throws UserNotFoundException Если пользователь с данным UUID не найден.
+     * @throws SyncLimitExceededException Если превышен лимит синхронизаций для пользователя.
+     * @throws InvalidJsonException Если данные в формате JSON некорректны.
+     */
     @CachePut(value = "users", key = "#uuid")
     public String processSyncData(String uuid, String jsonData) {
-        long currentTime = Instant.now().toEpochMilli(); // Вычисляем время для текущего запроса
+        long currentTime = Instant.now().toEpochMilli();
         log.info("Processing sync data for user: {}", uuid);
 
-        // Получаем данные пользователя по UUID
         UserData userData = userDataRepository.findById(uuid)
                 .orElseThrow(() -> new UserNotFoundException(USER_NOT_FOUND));
 
-        // Проверяем, не превышен ли лимит запросов (100 раз в день)
         if (userData.getSyncCount() >= 100) {
             throw new SyncLimitExceededException(MESSAGE_SYNC);
         }
 
-        // Проверяем и сбрасываем счетчик синхронизаций, если прошло больше 24 часов
         checkAndResetCounters(userData, false, currentTime);
 
-        //Если лимит не превышен, выполняем далее Безопасный парсинг JSON
         try {
             JsonNode rootNode = objectMapper.readTree(jsonData);
             int money = rootNode.path("money").asInt();
             String country = rootNode.path("country").asText();
 
-            // Обновляем данные
             userData.setMoney(money);
             userData.setCountry(country);
             userData.setSyncCount(userData.getSyncCount() + 1);
@@ -82,32 +96,37 @@ public class UserDataService {
             log.error("Error parsing JSON for user: {}", uuid, e);
             throw new InvalidJsonException(INVALID_JSON_FORMAT);
         }
-
     }
 
+    /**
+     * Получение данных пользователя по UUID.
+     *
+     * @param uuid UUID пользователя для получения данных.
+     * @return Данные пользователя в формате JSON.
+     * @throws UserNotFoundException Если пользователь с данным UUID не найден.
+     * @throws SyncLimitExceededException Если превышен лимит запросов.
+     * @throws InvalidJsonException Если возникла ошибка при сериализации данных.
+     */
     @Cacheable(value = "users", key = "#uuid")
     public String getUserData(String uuid) {
-        long currentTime = Instant.now(clock).toEpochMilli(); // Вычисляем время для текущего запроса
+        long currentTime = Instant.now(clock).toEpochMilli();
         log.info("Fetching user data for UUID: {}", uuid);
 
-        // Получаем данные пользователя по UUID
         UserData userData = userDataRepository.findById(uuid)
                 .orElseThrow(() -> new UserNotFoundException(USER_NOT_FOUND));
 
-        // Проверяем и сбрасываем счетчик синхронизаций, если прошло больше 24 часов
         checkAndResetCounters(userData, false, currentTime);
 
-        // Проверяем, не превышен ли лимит запросов (1 раз в день)
         if (userData.getSyncCount() >= 1) {
             throw new SyncLimitExceededException(MESSAGE_RQ);
         }
 
-        userData.setSyncCount(userData.getSyncCount() + 1); // Увеличиваем счетчик синхронизаций
+        userData.setSyncCount(userData.getSyncCount() + 1);
         userData.setLastSyncTime(currentTime);
-        userDataRepository.save(userData); // Сохраняем обновленные данные в базе
+        userDataRepository.save(userData);
 
         try {
-            String jsonResult = objectMapper.writeValueAsString(userData); // Сериализуем объект UserData в строку JSON и возвращаем результат
+            String jsonResult = objectMapper.writeValueAsString(userData);
             log.info("Serialized userData: {}", jsonResult);
             return jsonResult;
 
@@ -117,25 +136,29 @@ public class UserDataService {
         }
     }
 
-    // Прием игровой статистики от пользователя
+    /**
+     * Обработка данных активности пользователя и обновление статистики.
+     *
+     * @param uuid уникальный идентификатор пользователя.
+     * @param activity количество активности, которое нужно добавить к текущим данным пользователя.
+     * @return сообщение об успешной обработке данных активности.
+     * @throws UserNotFoundException если пользователь с заданным UUID не найден.
+     * @throws ActivityLimitExceededException если лимит на количество запросов статистики превышен.
+     */
     @CachePut(value = "users", key = "#uuid")
     public String processActivityData(String uuid, int activity) {
         long currentTime = Instant.now().toEpochMilli(); // Вычисляем время для текущего запроса
         log.info("Processing activity data for user: {}", uuid);
 
-        // Получаем данные пользователя по UUID
         UserData userData = userDataRepository.findById(uuid)
                 .orElseThrow(() -> new UserNotFoundException(USER_NOT_FOUND));
 
-        // Проверяем, не превышен ли лимит запросов (10000 раз в день)
         if (userData.getStatCount() >= 10000) {
             throw new ActivityLimitExceededException(LIMIT_ACTIVITY);
         }
 
-        // Проверяем и сбрасываем счетчик статистики, если прошло больше 24 часов
         checkAndResetCounters(userData, true, currentTime);
 
-        // Обновляем статистику
         userData.setActivity(userData.getActivity() + activity);
         userData.setStatCount(userData.getStatCount() + 1);
         userData.setLastStatTime(currentTime);
@@ -144,16 +167,27 @@ public class UserDataService {
         return "Activity data received successfully.";
     }
 
+    /**
+     * Проверка, прошло ли более 24 часа с последнего обновления счетчиков статистики или синхронизации,
+     * и сброс их в случае истечения этого времени.
+     * <p>
+     * В зависимости от типа проверки (статистика или синхронизация) метод сбрасывает счетчики активности
+     * или синхронизации.
+     * </p>
+     *
+     * @param userData данные пользователя, для которого выполняется проверка.
+     * @param isStatCheck флаг, определяющий, нужно ли сбрасывать счетчик статистики (если true) или синхронизации (если false).
+     * @param currentTime текущее время, использующееся для проверки истечения 24 часов.
+     */
     private void checkAndResetCounters(UserData userData, boolean isStatCheck, long currentTime) {
         long timeDiff = currentTime - (isStatCheck ? userData.getLastStatTime() : userData.getLastSyncTime());
 
-        // Проверяем, прошло ли 24 часа
-        if (timeDiff > 86400000) {  // 86400000 миллисекунд = 24 часа
+        if (timeDiff > 86400000) {
             if (isStatCheck) {
                 userData.setStatCount(0);
-                log.info("Reset stat count for user: {}", userData.getUuid());// Сбросить счетчик статистики
+                log.info("Reset stat count for user: {}", userData.getUuid());
             } else {
-                userData.setSyncCount(0); // Сбросить счетчик синхронизаций
+                userData.setSyncCount(0);
                 log.info("Reset sync count for user: {}", userData.getUuid());
             }
         }

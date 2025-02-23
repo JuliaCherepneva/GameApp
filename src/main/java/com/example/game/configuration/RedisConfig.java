@@ -12,14 +12,30 @@ import org.springframework.data.redis.serializer.RedisSerializationContext;
 
 import java.time.Duration;
 
+/**
+ * Конфигурация Redis-кэша.
+ * Включает кеширование и определяет параметры подключения к Redis.
+ */
 @Configuration
 @EnableCaching
 public class RedisConfig {
+    /**
+     * Фабрика подключений к Redis с использованием Lettuce.
+     *
+     * @return объект RedisConnectionFactory
+     */
     @Bean
     public RedisConnectionFactory redisConnectionFactory() {
         return new LettuceConnectionFactory();
     }
 
+    /**
+     * Конфигурация кеширования Redis.
+     * Определяет TTL записей, запрещает кеширование null-значений и настраивает сериализацию.
+     *
+     * @param objectMapper для сериализации данных в JSON
+     * @return объект RedisCacheConfiguration
+     */
     @Bean
     public RedisCacheConfiguration cacheConfiguration(ObjectMapper objectMapper) {
         return RedisCacheConfiguration.defaultCacheConfig()
