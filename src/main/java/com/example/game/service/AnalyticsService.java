@@ -23,16 +23,37 @@ import static com.example.game.exception.DatabaseException.*;
 import static com.example.game.exception.NoDataFoundException.*;
 
 
-// Аналитический сервис
+/**
+ * Сервис для выполнения аналитических операций с данными пользователей.
+ * <p>
+ * Этот класс предоставляет методы для получения списка топ-пользователей по количеству денег,
+ * подсчета новых пользователей в стране за период, а также истории активности пользователя.
+ * </p>
+ */
 @Service
 @RequiredArgsConstructor
 public class AnalyticsService {
-    private static final Logger log = LoggerFactory.getLogger(AnalyticsService.class);
+
     private final AnalyticsRepository analyticsRepository;
     private final UserActivityHistoryRepository userActivityHistoryRepository;
+
+    private static final Logger log = LoggerFactory.getLogger(AnalyticsService.class);
+
+    /**
+     * Константа определяющая сообщение при передаче нулевого или пустого значения в параметр.
+     */
     public static final String COUNTRY_REQUIRED = "Country must not be null or empty.";
 
-    // Получение пользователей с наибольшим значением "money" по каждой стране
+    /**
+     * Получение списка пользователей с наибольшим значением "money" по каждой стране.
+     *
+     * @param country     Страна для поиска пользователей.
+     * @param usersCount  Количество пользователей, которых необходимо получить.
+     * @return Список пользователей, отсортированных по убыванию значения "money" в пределах указанной страны.
+     * @throws IllegalArgumentException Если параметр "country" пустой или равен null, или если "usersCount" меньше 1.
+     * @throws NoDataFoundException Если не найдено данных для указанной страны.
+     * @throws DatabaseException Если произошла ошибка при запросе данных из базы данных.
+     */
     @Cacheable(value = "topUsers", key = "#country + '_' + #usersCount")
     public List<UserData> getTopUsersByMoneyPerCountry(String country, int usersCount) {
         if (usersCount < 1) {
@@ -57,7 +78,15 @@ public class AnalyticsService {
         }
     }
 
-    // Подсчет новых пользователей по каждой стране за период X
+    /**
+     * Подсчет количества новых пользователей по каждой стране за период.
+     *
+     * @param country     Страна для подсчета новых пользователей.
+     * @param startDate   Дата начала периода для подсчета новых пользователей.
+     * @return Количество новых пользователей, зарегистрированных в указанной стране с заданной даты.
+     * @throws IllegalArgumentException Если параметры "country" или "startDate" пустые или равны null.
+     * @throws DatabaseException Если произошла ошибка при запросе данных из базы данных.
+     */
     @Cacheable(value = "newUsersCount", key = "#country + '_' + #startDate")
     public long countNewUsersByCountry(String country, LocalDate startDate) {
         if (country == null || country.isBlank()) {
@@ -68,7 +97,7 @@ public class AnalyticsService {
         }
 
         log.info("Counting new users for country: {} from date: {}", country, startDate);
-        LocalDateTime startDateTime = startDate.atStartOfDay(); // Преобразуем LocalDate в LocalDateTime с временем 00:00:00
+        LocalDateTime startDateTime = startDate.atStartOfDay();
 
         try {
             return analyticsRepository.countNewUsersByCountry(country, startDateTime);
@@ -78,7 +107,16 @@ public class AnalyticsService {
         }
     }
 
-    // Получение отсортированного по дате списка значений активности пользователя
+    /**
+     * Получение списка истории активности пользователя, отсортированного по дате.
+     *
+     * @param uuid        UUID пользователя, чью активность нужно получить.
+     * @param startDate   Дата начала периода для получения истории активности.
+     * @return Список объектов {@link UserActivityHistory}, представляющих активность пользователя за указанный период.
+     * @throws IllegalArgumentException Если параметры "uuid" или "startDate" пустые или равны null.
+     * @throws NoDataFoundException Если не найдено данных активности для указанного пользователя.
+     * @throws DatabaseException Если произошла ошибка при запросе данных из базы данных.
+     */
     @Cacheable(value = "userActivityHistory", key = "#uuid + '_' + #startDate")
     public List<UserActivityHistory> getUserActivityHistory(String uuid, LocalDate startDate) {
         if (uuid == null || uuid.isBlank()) {
@@ -89,7 +127,7 @@ public class AnalyticsService {
         }
 
         log.info("Fetching activity history for user: {} from date: {}", uuid, startDate);
-        Pageable pageable = PageRequest.of(0, 10000);// Ограничиваем 10000 запросами в день
+        Pageable pageable = PageRequest.of(0, 10000);
 
         try {
             List<UserActivityHistory> history = userActivityHistoryRepository.findUserActivityHistoryByUuidAndPeriod(uuid, startDate, pageable);

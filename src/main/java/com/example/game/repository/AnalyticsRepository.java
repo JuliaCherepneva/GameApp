@@ -10,16 +10,33 @@ import org.springframework.stereotype.Repository;
 import java.time.LocalDateTime;
 import java.util.List;
 
+/**
+ * Репозиторий для аналитических запросов к данным пользователей.
+ */
 @Repository
-public interface AnalyticsRepository extends JpaRepository<UserData, String>  {
+public interface AnalyticsRepository extends JpaRepository<UserData, String> {
 
-    // Получение X пользователей с наибольшим значением money по каждой стране
+    /**
+     * Получает список пользователей из указанной страны, отсортированный по убыванию количества денег.
+     * <p>
+     * Используется для определения топ-N пользователей по финансовым показателям в конкретной стране.
+     *</p>
+     *
+     * @param country  Код страны.
+     * @param pageable Объект для пагинации и ограничения количества записей.
+     * @return Список пользователей, отсортированный по количеству денег.
+     */
     @Query("SELECT u FROM UserData u WHERE u.country = :country ORDER BY u.money DESC")
     List<UserData> findTopUsersByCountryMoney(@Param("country") String country, Pageable pageable);
 
-    // Подсчет новых пользователей по стране за период
+    /**
+     * Подсчитывает количество новых пользователей, зарегистрированных в указанной стране с определенной даты.
+     *
+     * @param country       Код страны.
+     * @param startDateTime Дата и время, начиная с которых нужно считать новых пользователей.
+     * @return Количество новых пользователей в стране за заданный период.
+     */
     @Query("SELECT COUNT(u) FROM UserData u WHERE u.country = :country AND u.createdAt >= :startDateTime")
     long countNewUsersByCountry(@Param("country") String country, @Param("startDateTime") LocalDateTime startDateTime);
-
 }
 
