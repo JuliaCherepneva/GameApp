@@ -10,8 +10,6 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
-import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
@@ -25,8 +23,8 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 
-@SpringBootTest
-@AutoConfigureMockMvc
+
+@ExtendWith(MockitoExtension.class)
 class AnalyticsControllerTest {
     @Autowired
     private MockMvc mockMvc;
@@ -49,13 +47,10 @@ class AnalyticsControllerTest {
         userData.setCountry("US");
         userData.setMoney(1000);
 
-        // Создание списка с одним элементом UserData
         List<UserData> topUsers = List.of(userData);
 
-        // Настройка мок-сервиса
         when(analyticsService.getTopUsersByMoneyPerCountry("US", 1)).thenReturn(topUsers);
 
-        // Выполнение запроса и проверка результатов
         mockMvc.perform(MockMvcRequestBuilders.get("/api/analytics/top-users-by-money")
                         .param("country", "US")
                         .param("usersCount", "1")
@@ -70,13 +65,10 @@ class AnalyticsControllerTest {
 
     @Test
     void countNewUsersByCountry_ShouldReturnCount() throws Exception {
-        // Мокаем данные, которые вернет сервис
         long newUsersCount = 10L;
 
-        // Настройка мок-сервиса
         when(analyticsService.countNewUsersByCountry("US", LocalDate.of(2025, 2, 22))).thenReturn(newUsersCount);
 
-        // Выполнение запроса и проверка результатов
         mockMvc.perform(MockMvcRequestBuilders.get("/api/analytics/new-users-count")
                         .param("country", "US")
                         .param("startDate", "2025-02-22")
@@ -89,29 +81,28 @@ class AnalyticsControllerTest {
 
     @Test
     void getUserActivityHistory_ShouldReturnActivityHistory() throws Exception {
-        // Мокаем данные, которые вернет сервис
+        UserData userData = new UserData();
+        userData.setUuid("test-uuid");
+
         UserActivityHistory activityHistory = new UserActivityHistory();
-        activityHistory.setUuid("test-uuid");
+
+        activityHistory.setUser(userData);
         activityHistory.setActivity(1); // Пример значения активности
         activityHistory.setActivityDate(LocalDate.of(2025, 2, 22)); // Устанавливаем нужную дату
 
-        // Создание списка с одним элементом UserActivityHistory
         List<UserActivityHistory> activityHistoryList = List.of(activityHistory);
 
-        // Настройка мок-сервиса
         when(analyticsService.getUserActivityHistory("test-uuid", LocalDate.of(2025, 2, 22))).thenReturn(activityHistoryList);
 
-        // Выполнение запроса и проверка результатов
         mockMvc.perform(MockMvcRequestBuilders.get("/api/analytics/user-activity-history")
                         .param("uuid", "test-uuid")
                         .param("startDate", "2025-02-22") // Используем строку даты вместо LocalDate.now().toString()
                         .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(MockMvcResultMatchers.status().isOk())
-                .andExpect(MockMvcResultMatchers.jsonPath("$[0].uuid").value("test-uuid"))
+                .andExpect(MockMvcResultMatchers.jsonPath("$[0].user.uuid").value("test-uuid"))
                 .andExpect(MockMvcResultMatchers.jsonPath("$[0].activity").value(1))
                 .andExpect(MockMvcResultMatchers.jsonPath("$[0].activityDate").value("2025-02-22")); // Сравниваем как строку
 
         verify(analyticsService).getUserActivityHistory("test-uuid", LocalDate.of(2025, 2, 22)); // Проверяем, что метод был вызван
     }
-
 }
