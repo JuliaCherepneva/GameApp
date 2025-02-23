@@ -16,7 +16,7 @@ public class AppConfig {
     /**
      * Бин для получения текущего времени с часовым поясом UTC.
      *
-     * @return объект Clock, настроенный на UTC
+     * @return объект {@link Clock}, настроенный на UTC
      */
     @Bean
     public Clock clock() {

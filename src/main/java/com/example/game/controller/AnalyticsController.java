@@ -3,6 +3,7 @@ package com.example.game.controller;
 import com.example.game.model.UserActivityHistory;
 import com.example.game.model.UserData;
 import com.example.game.service.AnalyticsService;
+import io.swagger.v3.oas.annotations.Operation;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -38,6 +39,7 @@ public class AnalyticsController {
      * @param usersCount Количество пользователей для вывода.
      * @return Список пользователей, отсортированный по убыванию количества денег.
      */
+    @Operation(tags = {"Аналитика"}, summary = "Получение списка топ-пользователей")
     @GetMapping("/top-users-by-money")
     public ResponseEntity<List<UserData>> getTopUsersByMoneyPerCountry(@RequestParam String country, @RequestParam int usersCount) {
         log.info("Fetching top {} users by money for country: {}", usersCount, country);
@@ -53,6 +55,7 @@ public class AnalyticsController {
      * @param startDate Дата начала периода, за который считается количество новых пользователей.
      * @return Количество новых пользователей в стране за заданный период.
      */
+    @Operation(tags = {"Аналитика"}, summary = "Получение количества новых пользователей")
     @GetMapping("/new-users-count")
     public ResponseEntity<Long> countNewUsersByCountry(@RequestParam String country, @RequestParam LocalDate startDate) {
         log.info("Counting new users for country: {} from date: {}", country, startDate);
@@ -71,6 +74,7 @@ public class AnalyticsController {
      * @param startDate Дата начала периода активности.
      * @return Список записей активности пользователя.
      */
+    @Operation(tags = {"Аналитика"}, summary = "Получение истории активности пользователя")
     @GetMapping("/user-activity-history")
     public ResponseEntity<List<UserActivityHistory>> getUserActivityHistory(@RequestParam String uuid, @RequestParam LocalDate startDate) {
         log.info("Fetching activity history for user: {} from date: {}", uuid, startDate);

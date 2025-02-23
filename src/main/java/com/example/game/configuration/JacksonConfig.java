@@ -15,7 +15,7 @@ public class JacksonConfig {
     /**
      * Бин ObjectMapper с настройками для сериализации/десериализации дат.
      *
-     * @return настроенный объект ObjectMapper
+     * @return настроенный объект {@link ObjectMapper}
      */
     @Bean
     public ObjectMapper objectMapper() {
